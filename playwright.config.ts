@@ -39,13 +39,16 @@ export default defineConfig({
 
   reporter: [
     ['html'],
-    ['Lisy']
+    ['list'],
+    // ['./src/utils/CustomReporter.ts'] — still blocked: needs
+    // src/ai/agents/rcaAgent.ts, src/ai/agents/flakyAnalyzer.ts,
+    // src/ai/config/providers.ts, which don't exist yet.
   ],
 
   use: {
     baseURL: resolveBaseURL(),
-    trace: 'on-first-retry',
-    screenshot: 'only-on-failure',
+    trace: 'on',
+    screenshot: 'on',
     video: 'on'
   },
   projects: [
