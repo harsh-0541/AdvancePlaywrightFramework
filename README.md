@@ -5,14 +5,19 @@ A TypeScript-based end-to-end and API test automation framework built on
 Object Model (POM), path-aliased imports, environment-driven configuration,
 and Allure reporting.
 
-> **Status:** the framework is wired up and has its first working spec.
-> `src/pages` holds Page Object Model classes for the TTACart demo app
-> (`LoginPage`, `InventaryPage`, `ItemDetailPage`, `CartPage`,
-> `CheckoutStep1`, `CheckoutOnePage`, `CheckoutCompletePage`, `BasePage`),
-> and `src/tests/LoginPage.spec.ts` is the first passing spec. `src/api`,
-> `src/config`, `src/fixtures`, and `src/testdata` are still empty
-> placeholders (`.gitkeep` only). No npm scripts exist yet — use the
-> Playwright CLI directly (see below).
+> **Status:** the framework is wired up and actively growing. `src/pages`
+> holds Page Object Model classes for the TTACart demo app (`LoginPage`,
+> `InventaryPage` (exports class `InventoryPage`), `ItemDetailPage`,
+> `CartPage`, `CheckoutStepOnePage`, `CheckoutStepTwoPage`,
+> `CheckoutCompletePage`, `BasePage`). `src/fixtures/test-base.ts` wraps
+> them into a custom `test` with one fixture per page object plus
+> reusable login/cart states. `src/tests/LoginPage.spec.ts` and the specs
+> under `src/tests/e2e/` are the specs so far. `src/config` now has
+> `.env`-reading helpers (`env.ts`, `credentials.ts`). `src/api` is still
+> an empty placeholder (`.gitkeep` only) even though `src/fixtures` and
+> `src/testdata` already reference a `BookingApi` client that hasn't been
+> added there yet — see **Known Issues** below. No npm scripts exist yet
+> — use the Playwright CLI directly (see below).
 
 ## Tech Stack
 
@@ -76,21 +81,28 @@ keys:
 ├── playwright.config.ts               # Playwright Test configuration
 ├── tsconfig.json                      # TypeScript config + path aliases
 ├── src/
-│   ├── api/                           # API client / request wrappers (empty)
-│   ├── config/                        # Environment & framework configuration (empty)
-│   ├── fixtures/                      # Playwright custom fixtures (empty)
+│   ├── api/                           # API client / request wrappers (empty — see Known Issues)
+│   ├── config/                        # Environment & framework configuration
+│   │   ├── env.ts                     # .env loading + requireEnv/envOr/assertEnv helpers
+│   │   └── credentials.ts             # Test-account credentials (env-driven, non-secret defaults)
+│   ├── fixtures/                      # Playwright custom fixtures
+│   │   ├── test-base.ts               # Custom `test` with one fixture per Page Object + login states
+│   │   └── booker.fixture.ts          # `test` extended with a BookingApi client + auth token
 │   ├── pages/                         # Page Object Model classes
 │   │   ├── BasePage.ts
 │   │   ├── LoginPage.ts
-│   │   ├── InventaryPage.ts
+│   │   ├── InventaryPage.ts           # exports class InventoryPage
 │   │   ├── ItemDetailPage.ts
 │   │   ├── CartPage.ts
-│   │   ├── CheckoutStep1.ts
-│   │   ├── CheckoutOnePage.ts
+│   │   ├── CheckoutStepOnePage.ts
+│   │   ├── CheckoutStepTwoPage.ts
 │   │   └── CheckoutCompletePage.ts
-│   ├── testdata/                      # Static/generated test data (empty)
+│   ├── testdata/                      # Static/generated test data
+│   │   ├── logintestdata.json         # TTACart demo accounts
+│   │   └── booking.data.ts            # Faker-driven restful-booker payload builders
 │   ├── tests/                         # Spec files (Playwright testDir)
-│   │   └── LoginPage.spec.ts
+│   │   ├── LoginPage.spec.ts
+│   │   └── e2e/                       # Checkout end-to-end specs
 │   └── utils/                         # Shared helper utilities
 │       ├── CustomReporter.ts          # Custom HTML reporter (see Reporting below)
 │       ├── DataGenerator.ts
@@ -177,3 +189,25 @@ uploads `playwright-report/` as a build artifact (30-day retention).
   array.
 - `allure-playwright` is included as a dependency for Allure-style reporting
   but is not yet wired into `playwright.config.ts`'s `reporter` list.
+
+## Known Issues
+
+`npx tsc --noEmit` currently reports real errors — CI does not run this
+check separately, so these won't fail a build, but they will bite anyone
+who imports the affected modules:
+
+- `src/fixtures/booker.fixture.ts` and `src/testdata/booking.data.ts`
+  import `../api/BookingApi`, which doesn't exist yet — `src/api/` is
+  still `.gitkeep`-only.
+- `src/fixtures/test-base.ts` imports `@pages/InventoryPage`, but the file
+  is still named `src/pages/InventaryPage.ts` (the exported class was
+  renamed to `InventoryPage`; the filename wasn't).
+- `src/testdata/booking.data.ts` calls `DataGenerator.dateOffset`,
+  `.number`, `.bool`, and `.oneOf`, none of which exist on
+  `src/utils/DataGenerator.ts` yet.
+- `src/tests/e2e/*.spec.ts` import `@utils/logger` (lowercase) and
+  `@utils/visualStep`; the former only differs in case from the real
+  `src/utils/Logger.ts` (breaks on case-sensitive filesystems/CI), and the
+  latter doesn't exist.
+- `src/utils/CustomReporter.ts` still can't load — see the reporter note
+  above.
